@@ -1,0 +1,23 @@
+[project]
+name = "minideepresearch"
+version = "0.1.0"
+description = "Minimal deep research engine for small LLM models"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.28",
+    "beautifulsoup4>=4.12",
+    "rich>=13.0",
+]
+
+[project.scripts]
+mdr = "minideepresearch.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
