@@ -2,23 +2,20 @@
 """CLI for MiniDeepResearch."""
 
 import argparse
-import json
 import logging
 import sys
 
 from minideepresearch import create_engine, setup_logger
+from minideepresearch.formatter import format_json, format_markdown, format_text
 from minideepresearch.progress import progress_display
 
-# Setup logging
 logger = setup_logger("minideepresearch-cli")
 
 
 def main():
     parser = argparse.ArgumentParser(description="MiniDeepResearch CLI")
     parser.add_argument("query", help="Research query")
-    parser.add_argument(
-        "--model", "-m", default="llama2:7b", help="Ollama model name"
-    )
+    parser.add_argument("--model", "-m", default="llama2:7b", help="Ollama model name")
     parser.add_argument(
         "--search-url",
         "-s",
@@ -79,22 +76,32 @@ def main():
         action="store_true",
         help="Fetch full content from result URLs (slower but more detailed)",
     )
-    parser.add_argument(
-        "--json", "-j", action="store_true", help="Output as JSON"
-    )
+    parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
     parser.add_argument(
         "--markdown", "-md", action="store_true", help="Output as Markdown"
     )
     parser.add_argument("--output", "-o", help="Save output to file")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Verbose output (DEBUG level)"
+    )
+    parser.add_argument(
+        "--quiet", "-q", action="store_true", help="Quiet mode (errors only)"
+    )
 
     args = parser.parse_args()
 
+    if args.verbose:
+        logging.getLogger("minideepresearch").setLevel(logging.DEBUG)
+    elif args.quiet:
+        logging.getLogger("minideepresearch").setLevel(logging.ERROR)
+
     logger.debug(f"Starting research with model={args.model}, strategy={args.strategy}")
-    
-    # Use progress display for better UX
+
     progress_display.log("=" * 50, "info")
     progress_display.log(f"Model: [bold cyan]{args.model}[/bold cyan]", "info")
-    progress_display.log(f"Strategy: [bold magenta]{args.strategy}[/bold magenta]", "info")
+    progress_display.log(
+        f"Strategy: [bold magenta]{args.strategy}[/bold magenta]", "info"
+    )
     progress_display.log(f"Query: [italic]{args.query}[/italic]", "info")
     progress_display.log("=" * 50, "info")
 
@@ -117,48 +124,31 @@ def main():
         result = engine.research(args.query)
         logger.debug("Research completed")
 
-        # Format output
         if args.json:
-            output = json.dumps(result, indent=2, ensure_ascii=False)
+            output = format_json(result)
         elif args.markdown:
-            md = ["# Research Result\n"]
-            md.append(result["answer"])
-            md.append("\n---\n\n## Sources\n")
-            for i, src in enumerate(result["sources"], 1):
-                title = src.get("title", "No title")
-                url = src.get("url", "")
-                if url:
-                    md.append(f"{i}. [{title}]({url})")
-                else:
-                    md.append(f"{i}. {title}")
-
-            if result.get("iterations_used"):
-                md.append(
-                    f"\n---\n\n**Iterations:** {result['iterations_used']}"
-                )
-            if result.get("all_questions"):
-                md.append(f"\n**Questions:** {len(result['all_questions'])}")
-            if result.get("fact_check"):
-                md.append(f"\n**Fact Check:** {result['fact_check']}")
-
-            output = "\n".join(md)
+            output = format_markdown(result)
+        elif args.output:
+            output = format_text(result)
         else:
-            # Use progress display for output formatting
+            output = ""
             progress_display.log("\n" + "=" * 60, "info")
             progress_display.log("ANSWER:", "success")
             progress_display.log("=" * 60, "info")
             progress_display.print_result("Answer", result["answer"])
-            
+
             progress_display.log("\n" + "=" * 60, "info")
             progress_display.log("SOURCES:", "success")
             progress_display.log("=" * 60, "info")
-            
+
             for i, src in enumerate(result["sources"], 1):
                 progress_display.log(f"{i}. {src.get('title', 'No title')}", "info")
                 progress_display.log(f"   {src.get('url', '')}", "info")
 
             if result.get("iterations_used"):
-                progress_display.log(f"\nIterations used: {result['iterations_used']}", "info")
+                progress_display.log(
+                    f"\nIterations used: {result['iterations_used']}", "info"
+                )
             if result.get("all_questions"):
                 progress_display.log(
                     f"Questions generated: {len(result['all_questions'])}", "info"
@@ -166,28 +156,12 @@ def main():
             if result.get("fact_check"):
                 progress_display.log(f"Fact check: {result['fact_check']}", "info")
 
-            # For file output, we need to collect everything into a string
-            if args.output:
-                lines = [
-                    "=" * 60,
-                    "ANSWER:",
-                    "=" * 60,
-                    result["answer"],
-                    "\nSOURCES:",
-                    "=" * 60
-                ]
-                for i, src in enumerate(result["sources"], 1):
-                    lines.append(f"{i}. {src.get('title', 'No title')} ({src.get('url', '')})")
-                
-                output = "\n".join(lines)
-            else:
-                output = ""
-
-        # Output to file or terminal (only if not already printed by progress_display)
         if args.output and output:
             with open(args.output, "w", encoding="utf-8") as f:
                 f.write(output)
             progress_display.log(f"\nSaved to: {args.output}", "success")
+        elif output and not args.output:
+            print(output)
 
     except KeyboardInterrupt:
         print("\nInterrupted by user")

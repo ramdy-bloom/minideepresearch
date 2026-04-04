@@ -16,9 +16,10 @@ Usage:
 """
 
 from .engine import MiniResearchEngine, create_engine
-from .llm import OllamaLLM
+from .llm import OllamaLLM, BaseLLM
 from .logger import setup_logger
 from .search import SearXNGSearch, BaseSearchEngine, ContentFetcher
+from .formatter import format_json, format_markdown, format_text
 
 __version__ = "0.1.0"
 
@@ -26,8 +27,12 @@ __all__ = [
     "MiniResearchEngine",
     "create_engine",
     "OllamaLLM",
+    "BaseLLM",
     "SearXNGSearch",
     "BaseSearchEngine",
     "ContentFetcher",
     "setup_logger",
+    "format_json",
+    "format_markdown",
+    "format_text",
 ]

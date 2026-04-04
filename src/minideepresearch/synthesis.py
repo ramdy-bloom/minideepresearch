@@ -24,6 +24,7 @@ class SynthesisHandler:
         query: str,
         results: list[dict],
         previous_knowledge: str = "",
+        skip_fact_check: bool = False,
     ) -> dict[str, Any]:
         """Synthesize an answer from search results."""
         _logger.debug(f"Synthesizing answer for query: {query[:80]}...")
@@ -32,7 +33,7 @@ class SynthesisHandler:
         sources = self._format_sources(results)
 
         fact_check_notes = ""
-        if self.enable_fact_check and previous_knowledge:
+        if self.enable_fact_check and not skip_fact_check and previous_knowledge:
             _logger.debug("Running fact check")
             fact_check_notes = self._fact_check(previous_knowledge, sources)
 
@@ -44,12 +45,12 @@ class SynthesisHandler:
         )
 
         response = self.llm.invoke(prompt)
-        
+
         # Validate LLM response
         validate_llm_response(response.content, "synthesizer")
-        
+
         _logger.debug("Synthesis complete")
-        
+
         return {
             "answer": response.content,
             "sources": results,
@@ -109,7 +110,7 @@ REPORT IN RUSSIAN:"""
     def _fact_check(self, previous: str, new_sources: str) -> str:
         """Check for contradictions between sources."""
         _logger.debug("Running fact check")
-        
+
         prompt = f"""Quickly check if there are any contradictions between the previous
 knowledge and the new sources.
 

@@ -148,6 +148,8 @@ class MiniResearchEngine:
         all_results = []
         all_questions = []
         previous_knowledge = ""
+        seen_urls: set[str] = set()
+        iteration = 0
 
         for iteration in range(1, self.max_iterations + 1):
             if iteration == 1:
@@ -192,19 +194,28 @@ class MiniResearchEngine:
             for i, q in enumerate(questions):
                 self.progress.log(f"  Searching: '{q[:60]}...'")
                 results = self.search.search(q)
-                iteration_results.extend(results)
+                new_results = [r for r in results if r.get("url") not in seen_urls]
+                for r in new_results:
+                    if r.get("url"):
+                        seen_urls.add(r["url"])
+                iteration_results.extend(new_results)
                 self.progress.update_progress_bar(task_id, advance=1)
-                self.progress.log(f"  Got {len(results)} results", "info")
+                self.progress.log(
+                    f"  Got {len(new_results)} new results (skipped {len(results) - len(new_results)} duplicates)",
+                    "info",
+                )
 
             self.progress.complete_progress_bar(
                 task_id, f"Iteration {iteration} search completed"
             )
             all_results.extend(iteration_results)
 
-            # Synthesis progress
             self.progress.show_spinner(f"Iteration {iteration}: Synthesizing answer...")
             synthesis = self.synthesizer.synthesize(
-                query, iteration_results, previous_knowledge
+                query,
+                iteration_results,
+                previous_knowledge,
+                skip_fact_check=(iteration < self.max_iterations),
             )
             previous_knowledge = synthesis["answer"]
             self.progress.stop_spinner()
@@ -228,7 +239,7 @@ class MiniResearchEngine:
                         "success",
                     )
 
-        # Final synthesis
+        # Final synthesis with fact check
         self.progress.show_spinner("Generating final comprehensive report...")
         final = self.synthesizer.synthesize(query, all_results, previous_knowledge)
         self.progress.stop_spinner()
