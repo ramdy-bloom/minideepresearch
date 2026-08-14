@@ -20,10 +20,8 @@ def setup_logger(
     if logger.handlers:
         return logger
     
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    # Компактный формат: не ломает rich-прогресс в CLI
+    formatter = logging.Formatter("[%(levelname)s] %(message)s")
     
     # Console handler
     console_handler = logging.StreamHandler()

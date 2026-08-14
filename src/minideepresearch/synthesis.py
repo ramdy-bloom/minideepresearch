@@ -100,6 +100,7 @@ class SynthesisHandler:
 3. **Citations**: Every technical fact or claim MUST be cited using [1], [2], etc.
 4. **Language**: Write the entire report in Russian language.
 5. **Formatting**: Use clean Markdown with headers, lists, and bold text for readability.
+6. **Sources**: Do NOT include a "Sources"/"Список источников" section at the end of the report — it is appended automatically.
 
 Your goal is to provide a final, "publish-ready" research document.
 
@@ -107,12 +108,20 @@ REPORT IN RUSSIAN:"""
 
         return prompt
 
+    _CONSISTENT_MARKERS = (
+        "consistent",
+        "нет противоречий",
+        "противоречий нет",
+        "противоречия не найдены",
+        "противоречий не найдено",
+        "согласовано",
+    )
+
     def _fact_check(self, previous: str, new_sources: str) -> str:
         """Check for contradictions between sources."""
         _logger.debug("Running fact check")
 
-        prompt = f"""Quickly check if there are any contradictions between the previous
-knowledge and the new sources.
+        prompt = f"""Check if there are any contradictions between the previous knowledge and the new sources.
 
 Previous Knowledge:
 {previous[:1500]}
@@ -120,16 +129,22 @@ Previous Knowledge:
 New Sources:
 {new_sources[:1500]}
 
-Respond with either:
-- "Consistent" if no contradictions
-- Brief note of any contradictions found
+Respond with EXACTLY one word CONSISTENT (latin letters) if there are no contradictions.
+If contradictions exist, respond with CONFLICT followed by a brief note in Russian.
 
-IMPORTANT: Write your response in Russian language."""
+Examples:
+CONSISTENT
+CONFLICT: источник [2] противоречит предыдущим выводам"""
 
         try:
             response = self.llm.invoke(prompt)
             result = response.content.strip()
-            return result if result and result != "Consistent" else ""
+            if not result:
+                return ""
+            first_line = result.split("\n", 1)[0].strip().lower()
+            if any(marker in first_line for marker in self._CONSISTENT_MARKERS):
+                return ""
+            return result
         except Exception:
             return ""
 
@@ -139,10 +154,15 @@ IMPORTANT: Write your response in Russian language."""
         for i, r in enumerate(results, 1):
             title = r.get("title", "Untitled")
             url = r.get("url", "")
-            snippet = r.get("snippet", "")
 
-            if snippet:
-                formatted.append(f"[{i}] {title}\n{snippet}\nURL: {url}")
+            full_content = r.get("full_content", "")
+            if full_content.startswith("[Error"):
+                full_content = ""
+
+            content = full_content or r.get("snippet", "")
+
+            if content:
+                formatted.append(f"[{i}] {title}\n{content}\nURL: {url}")
             else:
                 formatted.append(f"[{i}] {title}\nURL: {url}")
 

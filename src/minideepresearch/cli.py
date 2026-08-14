@@ -76,6 +76,12 @@ def main():
         action="store_true",
         help="Fetch full content from result URLs (slower but more detailed)",
     )
+    parser.add_argument(
+        "--fetch-backend",
+        choices=["auto", "requests", "curl"],
+        default="auto",
+        help="Fetch backend: auto = requests with curl fallback, requests only, or curl only",
+    )
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
     parser.add_argument(
         "--markdown", "-md", action="store_true", help="Output as Markdown"
@@ -112,12 +118,13 @@ def main():
         max_iterations=args.iterations,
         temperature=args.temperature,
         fetch_content=args.fetch,
+        fetch_backend=args.fetch_backend,
         num_predict=args.num_predict,
         enable_thinking=not args.no_thinking,
         timeout=args.timeout,
         num_ctx=args.num_ctx,
+        enable_fact_check=not args.no_fact_check,
     )
-    engine.synthesizer.enable_fact_check = not args.no_fact_check
 
     try:
         logger.debug("Starting research")

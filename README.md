@@ -23,6 +23,7 @@ uv run mdr "сравнение векторных БД" --markdown -o research.m
 | --strategy | -t | multi_iter | Стратегии: iterative, parallel, multi_iter, evidence |
 | --iterations | -i | 3 | Макс. кол-во итераций уточнения |
 | --fetch | -f | False | [!] Загружать полный контент страниц (дает глубину) |
+| --fetch-backend | | auto | Бэкенд загрузки: auto (requests + curl-фоллбек + зеркала), requests, curl |
 | --num-ctx | | 32768 | Размер контекстного окна (Context Window) |
 | --num-predict | | -1 | Макс. токенов генерации (-1 = неограниченно) |
 | --timeout | | 300 | Таймаут запроса к LLM в секундах |

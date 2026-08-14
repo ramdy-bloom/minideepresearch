@@ -3,6 +3,7 @@ Main research engine with multiple strategies.
 """
 
 import concurrent.futures
+import re
 from typing import Any
 
 from .generators import QuestionGenerator
@@ -271,9 +272,11 @@ IMPORTANT: Generate in English, but when providing final answers - respond in Ru
         response = self.llm.invoke(prompt)
         self.progress.stop_spinner()
 
-        facts = [
-            f.strip() for f in response.content.split("\n") if f.strip() and f[0] == "F"
-        ]
+        facts = []
+        for line in response.content.split("\n"):
+            m = re.match(r"^F\d+\s*:\s*(\S.*)$", line.strip())
+            if m:
+                facts.append(m.group(1).strip())
 
         if not facts:
             facts = self.question_gen.generate_first(query)
@@ -313,10 +316,12 @@ def create_engine(
     max_iterations: int = 3,
     temperature: float = 0.7,
     fetch_content: bool = False,
+    fetch_backend: str = "auto",
     num_predict: int = -1,
     enable_thinking: bool = True,
     timeout: int = 300,
-    num_ctx: int = 4096,
+    num_ctx: int = 32768,
+    enable_fact_check: bool = True,
 ) -> MiniResearchEngine:
     """Factory function to create engine with defaults."""
     from .llm import OllamaLLM
@@ -330,11 +335,16 @@ def create_engine(
         timeout=timeout,
         num_ctx=num_ctx,
     )
-    search = SearXNGSearch(base_url=search_url, fetch_content=fetch_content)
+    search = SearXNGSearch(
+        base_url=search_url,
+        fetch_content=fetch_content,
+        fetch_backend=fetch_backend,
+    )
 
     return MiniResearchEngine(
         llm=llm,
         search=search,
         strategy=strategy,
         max_iterations=max_iterations,
+        enable_fact_check=enable_fact_check,
     )

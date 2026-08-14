@@ -13,6 +13,12 @@ _logger = get_logger(__name__)
 T = TypeVar("T")
 
 
+def short_error(error: BaseException, max_length: int = 200) -> str:
+    """Однострочное усечённое сообщение об ошибке для компактных логов."""
+    first_line = str(error).strip().split("\n")[0]
+    return first_line[:max_length]
+
+
 def retry(
     max_attempts: int = 3,
     delay: float = 1.0,
@@ -47,8 +53,8 @@ def retry(
                     if attempt < max_attempts:
                         wait_time = delay * (backoff ** (attempt - 1))
                         _logger.warning(
-                            f"{func.__name__} failed (attempt {attempt}): {e}. "
-                            f"Retrying in {wait_time:.1f}s..."
+                            f"{func.__name__} failed (attempt {attempt}): "
+                            f"{short_error(e)}. Retrying in {wait_time:.1f}s..."
                         )
                         time.sleep(wait_time)
                     else:
@@ -120,28 +126,6 @@ def validate_questions(questions: list[str], expected_count: int) -> None:
     if invalid:
         _logger.error(f"Found {len(invalid)} invalid questions: {invalid}")
         raise ValueError(f"Invalid questions generated: {invalid}")
-
-
-def handle_search_error(error: Exception, query: str) -> dict[str, Any]:
-    """
-    Handle search errors gracefully.
-
-    Args:
-        error: Exception that occurred
-        query: Search query that failed
-
-    Returns:
-        Error result dictionary
-    """
-    _logger.error(f"Search failed for query '{query[:80]}...': {error}")
-
-    return {
-        "error": str(error),
-        "title": "Search Error",
-        "url": "",
-        "snippet": f"Failed to search: {str(error)[:200]}",
-        "engine": "unknown",
-    }
 
 
 def handle_llm_error(error: Exception, operation: str) -> NoReturn:
